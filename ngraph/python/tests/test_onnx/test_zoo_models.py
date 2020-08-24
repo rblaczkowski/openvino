@@ -619,6 +619,6 @@ xfail_issue_36538(test_cases.test_yolov3_opset10_cpu)
 
 for test_case in test_cases_list:
     xfail_issue_36533(test_case)
-
+# assert 1 == 1000
 del test_cases
 globals().update(backend_test.enable_report().test_cases)

@@ -29,6 +29,9 @@ from onnx.backend.test.runner import TestItem
 from tests.test_onnx.utils.onnx_helpers import import_onnx_model
 from typing import Any, Dict, List, Optional, Pattern, Set, Text, Type, Union
 
+ONNX_HOME = os.path.expanduser(os.getenv("ONNX_HOME", os.path.join("~", ".onnx")))
+additional_models_dir_name = "additional_models"
+
 
 class ModelImportRunner(onnx.backend.test.BackendTest):
     def __init__(
@@ -135,3 +138,9 @@ class ModelImportRunner(onnx.backend.test.BackendTest):
             )
 
         self._add_test(kind + "ModelExecution", model_test.name, run_execution, model_marker)
+# HAVE TO BE CHANGED BACK
+
+    def get_testcase(self, test_group: str, model_path: str) -> TestItem:
+        return self._test_items[test_group]["test_{}/{}/{}".format(ONNX_HOME,
+                                                                   additional_models_dir_name,
+                                                                   model_path)].func
