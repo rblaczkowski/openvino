@@ -57,8 +57,8 @@ class OpenVinoOnnxBackend(Backend):
         try:
             import_onnx_model(model)
             return True
-        except Exception:
-            return False
+        except Exception as e:
+            raise Exception("\nnGraph failed to import ONNX model: {}\n".format(str(e)))
 
     @classmethod
     def prepare(
