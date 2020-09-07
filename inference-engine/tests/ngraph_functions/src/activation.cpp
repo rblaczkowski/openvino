@@ -93,6 +93,14 @@ std::shared_ptr<ngraph::Node> makeActivation(const ngraph::Output<Node> &in,
         }
         case ngraph::helpers::ActivationTypes::Mish:
             return std::make_shared<ngraph::op::v4::Mish>(in);
+        case ngraph::helpers::ActivationTypes::HSwish:
+            return std::make_shared<ngraph::op::v4::HSwish>(in);
+        case ngraph::helpers::ActivationTypes::SoftPlus:
+            return std::make_shared<ngraph::op::v4::SoftPlus>(in);
+        case ngraph::helpers::ActivationTypes::Swish: {
+            auto beta = std::make_shared<ngraph::op::Constant>(type, inShape, 1.0f);
+            return std::make_shared<ngraph::op::v4::Swish>(in, beta);
+        }
         default:
             throw std::runtime_error("Can't create layer for this activation type");
     }

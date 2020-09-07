@@ -11,7 +11,7 @@
 #include <fstream>
 #include <ngraph/variant.hpp>
 #include <hetero/hetero_plugin_config.hpp>
-#include <graph_tools.hpp>
+#include <legacy/graph_tools.hpp>
 #include <functional_test_utils/plugin_cache.hpp>
 #include <multi-device/multi_device_config.hpp>
 #include <ngraph/op/util/op_types.hpp>
@@ -1316,13 +1316,13 @@ TEST_P(IEClassLoadNetworkTest, QueryNetworkHETEROwithMULTINoThrow_v7) {
             }
         }
 
+        auto convertedActualNetwork = std::make_shared<details::CNNNetworkImpl>(actualNetwork);
         QueryNetworkResult result;
         std::string targetFallback(std::string(CommonTestUtils::DEVICE_MULTI) + "," + CommonTestUtils::DEVICE_CPU);
-        ASSERT_NO_THROW(result = ie.QueryNetwork(actualNetwork, CommonTestUtils::DEVICE_HETERO, {
+        ASSERT_NO_THROW(result = ie.QueryNetwork(InferenceEngine::CNNNetwork{convertedActualNetwork}, CommonTestUtils::DEVICE_HETERO, {
                 {MULTI_CONFIG_KEY(DEVICE_PRIORITIES), devices},
                 {"TARGET_FALLBACK",                   targetFallback}}));
 
-        auto convertedActualNetwork = std::make_shared<details::CNNNetworkImpl>(actualNetwork);
         for (auto &&layer : result.supportedLayersMap) {
             EXPECT_NO_THROW(CommonTestUtils::getLayerByName(convertedActualNetwork.get(), layer.first));
         }
@@ -1346,11 +1346,11 @@ TEST_P(IEClassLoadNetworkTest, QueryNetworkMULTIwithHETERONoThrowv7) {
         }
 
         QueryNetworkResult result;
-        ASSERT_NO_THROW(result = ie.QueryNetwork(actualNetwork, CommonTestUtils::DEVICE_MULTI, {
+        auto convertedActualNetwork = std::make_shared<details::CNNNetworkImpl>(actualNetwork);
+        ASSERT_NO_THROW(result = ie.QueryNetwork(InferenceEngine::CNNNetwork{convertedActualNetwork}, CommonTestUtils::DEVICE_MULTI, {
                 {MULTI_CONFIG_KEY(DEVICE_PRIORITIES), devices},
                 {"TARGET_FALLBACK",                   deviceName + "," + CommonTestUtils::DEVICE_CPU}}));
 
-        auto convertedActualNetwork = std::make_shared<details::CNNNetworkImpl>(actualNetwork);
         for (auto &&layer : result.supportedLayersMap) {
             EXPECT_NO_THROW(CommonTestUtils::getLayerByName(convertedActualNetwork.get(), layer.first));
         }

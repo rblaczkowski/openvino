@@ -44,10 +44,11 @@
 #include <nodes/mkldnn_normalize_node.h>
 #include <nodes/mkldnn_tensoriterator_node.h>
 #include <nodes/mkldnn_scatter_update_node.h>
+#include <nodes/mkldnn_interpolate_node.h>
 #include <mkldnn_types.h>
 #include "mkldnn_extension_utils.h"
 
-#include "ie_memcpy.h"
+#include "nodes/common/cpu_memcpy.h"
 #include "mkldnn_debug.h"
 
 using namespace mkldnn;
@@ -75,6 +76,7 @@ static const InferenceEngine::details::caseless_unordered_map<std::string, Type>
         { "Activation", Activation },
         { "Clamp", Activation },
         { "Swish", Activation },
+        { "HSwish", Activation },
         { "Mish", Activation },
         { "ScaleShift", Depthwise },
         { "PReLU", Depthwise },
@@ -121,6 +123,7 @@ static const InferenceEngine::details::caseless_unordered_map<std::string, Type>
         { "ScatterUpdate", ScatterUpdate},
         { "ScatterElementsUpdate", ScatterElementsUpdate},
         { "ScatterNDUpdate", ScatterNDUpdate},
+        { "Interpolate", Interpolate},
 };
 
 Type TypeFromName(const std::string type) {
@@ -441,6 +444,12 @@ std::string MKLDNNNode::getPrimitiveDescriptorType() {
             } else {
                 str_type += "_I8";
             }
+        } else {
+            if (selectedPrimitiveDesc->getConfig().outConfs[0].desc.getPrecision() != InferenceEngine::Precision::U8) {
+                str_type += "_" + std::string(selectedPrimitiveDesc->getConfig().outConfs[0].desc.getPrecision().name());
+            } else {
+                str_type += "_I8";
+            }
         }
     }
 
@@ -691,7 +700,7 @@ InferenceEngine::Blob::Ptr MKLDNNNode::createInternalBlob(InferenceEngine::SizeV
     auto fillInternalBlob = [&](char *data, size_t intBuffSize) {
         size_t offset = blb->byteSize();
         checkSize(intBuffSize, offset);
-        ie_memcpy(data, intBuffSize, blb->buffer(), blb->byteSize());
+        cpu_memcpy_s(data, intBuffSize, blb->buffer(), blb->byteSize());
         data += blb->byteSize();
         for (const auto &merged : getMergeWith()) {
             wLayer = dynamic_cast<InferenceEngine::WeightableLayer*>(merged->getCnnLayer().get());
@@ -704,7 +713,7 @@ InferenceEngine::Blob::Ptr MKLDNNNode::createInternalBlob(InferenceEngine::SizeV
                 THROW_IE_EXCEPTION << "Cannot get internal blob layer for node " << getName() << ".";
             offset += blb->byteSize();
             checkSize(intBuffSize, offset);
-            ie_memcpy(data, intBuffSize, blb->buffer(), blb->byteSize());
+            cpu_memcpy_s(data, intBuffSize, blb->buffer(), blb->byteSize());
             data += blb->byteSize();
         }
     };

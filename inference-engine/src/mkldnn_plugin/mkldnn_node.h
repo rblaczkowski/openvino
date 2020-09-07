@@ -12,7 +12,6 @@
 #include <cassert>
 #include <algorithm>
 #include <ie_common.h>
-#include <ie_layers_property.hpp>
 #include "mkldnn_dims.h"
 #include "mkldnn_memory.h"
 #include "mkldnn_edge.h"
@@ -77,7 +76,8 @@ enum Type {
     Normalize,
     ScatterUpdate,
     ScatterElementsUpdate,
-    ScatterNDUpdate
+    ScatterNDUpdate,
+    Interpolate
 };
 
 Type TypeFromName(const std::string type);
@@ -166,6 +166,8 @@ static std::string NameFromType(Type type) {
             return "ScatterElementsUpdate";
         case ScatterNDUpdate:
             return "ScatterNDUpdate";
+        case Interpolate:
+            return "Interpolate";
         default:
             return "Unknown";
     }

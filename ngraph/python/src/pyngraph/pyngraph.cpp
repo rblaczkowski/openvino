@@ -34,16 +34,19 @@
 #include "pyngraph/ops/util/regmodule_pyngraph_op_util.hpp"
 #include "pyngraph/partial_shape.hpp"
 #include "pyngraph/passes/regmodule_pyngraph_passes.hpp"
+#include "pyngraph/rt_map.hpp"
 #include "pyngraph/shape.hpp"
 #include "pyngraph/strides.hpp"
 #include "pyngraph/types/regmodule_pyngraph_types.hpp"
 #include "pyngraph/util.hpp"
+#include "pyngraph/variant.hpp"
 
 namespace py = pybind11;
 
 PYBIND11_MODULE(_pyngraph, m)
 {
     m.doc() = "Package ngraph.impl that wraps nGraph's namespace ngraph";
+    regclass_pyngraph_PyRTMap(m);
     regclass_pyngraph_Node(m);
     regclass_pyngraph_Input(m);
     regclass_pyngraph_Output(m);
@@ -68,4 +71,7 @@ PYBIND11_MODULE(_pyngraph, m)
     regmodule_pyngraph_op_util(m_op);
     regmodule_pyngraph_passes(m);
     regmodule_pyngraph_util(m);
+    regclass_pyngraph_Variant(m);
+    regclass_pyngraph_VariantWrapper<std::string>(m, std::string("String"));
+    regclass_pyngraph_VariantWrapper<int64_t>(m, std::string("Int"));
 }

@@ -25,6 +25,8 @@
 
 using namespace ngraph;
 
+NGRAPH_SUPPRESS_DEPRECATED_START
+
 namespace
 {
     void op_is_Abs()
@@ -344,7 +346,7 @@ namespace
 
     void op_is_GRUCell()
     {
-        op::GRUCell node;
+        op::v3::GRUCell node;
         EXPECT_FALSE(op::is_unary_elementwise_arithmetic(&node));
         EXPECT_FALSE(op::is_binary_elementwise_arithmetic(&node));
         EXPECT_FALSE(op::is_binary_elementwise_comparison(&node));
@@ -372,15 +374,6 @@ namespace
     void op_is_Gelu()
     {
         op::Gelu node;
-        EXPECT_FALSE(op::is_unary_elementwise_arithmetic(&node));
-        EXPECT_FALSE(op::is_binary_elementwise_arithmetic(&node));
-        EXPECT_FALSE(op::is_binary_elementwise_comparison(&node));
-        EXPECT_FALSE(op::is_binary_elementwise_logical(&node));
-    }
-
-    void op_is_GetOutputElement()
-    {
-        op::GetOutputElement node;
         EXPECT_FALSE(op::is_unary_elementwise_arithmetic(&node));
         EXPECT_FALSE(op::is_binary_elementwise_arithmetic(&node));
         EXPECT_FALSE(op::is_binary_elementwise_comparison(&node));
@@ -434,7 +427,7 @@ namespace
 
     void op_is_Interpolate()
     {
-        op::Interpolate node;
+        op::v0::Interpolate node;
         EXPECT_FALSE(op::is_unary_elementwise_arithmetic(&node));
         EXPECT_FALSE(op::is_binary_elementwise_arithmetic(&node));
         EXPECT_FALSE(op::is_binary_elementwise_comparison(&node));
@@ -479,7 +472,7 @@ namespace
 
     void op_is_LSTMCell()
     {
-        op::LSTMCell node;
+        op::v4::LSTMCell node;
         EXPECT_FALSE(op::is_unary_elementwise_arithmetic(&node));
         EXPECT_FALSE(op::is_binary_elementwise_arithmetic(&node));
         EXPECT_FALSE(op::is_binary_elementwise_comparison(&node));
@@ -488,7 +481,7 @@ namespace
 
     void op_is_LSTMSequence()
     {
-        op::LSTMSequence node;
+        op::v0::LSTMSequence node;
         EXPECT_FALSE(op::is_unary_elementwise_arithmetic(&node));
         EXPECT_FALSE(op::is_binary_elementwise_arithmetic(&node));
         EXPECT_FALSE(op::is_binary_elementwise_comparison(&node));
@@ -612,27 +605,9 @@ namespace
         EXPECT_TRUE(op::is_binary_elementwise_logical(&node));
     }
 
-    void op_is_Pad()
-    {
-        op::Pad node;
-        EXPECT_FALSE(op::is_unary_elementwise_arithmetic(&node));
-        EXPECT_FALSE(op::is_binary_elementwise_arithmetic(&node));
-        EXPECT_FALSE(op::is_binary_elementwise_comparison(&node));
-        EXPECT_FALSE(op::is_binary_elementwise_logical(&node));
-    }
-
     void op_is_Parameter()
     {
         op::Parameter node;
-        EXPECT_FALSE(op::is_unary_elementwise_arithmetic(&node));
-        EXPECT_FALSE(op::is_binary_elementwise_arithmetic(&node));
-        EXPECT_FALSE(op::is_binary_elementwise_comparison(&node));
-        EXPECT_FALSE(op::is_binary_elementwise_logical(&node));
-    }
-
-    void op_is_Passthrough()
-    {
-        op::Passthrough node;
         EXPECT_FALSE(op::is_unary_elementwise_arithmetic(&node));
         EXPECT_FALSE(op::is_binary_elementwise_arithmetic(&node));
         EXPECT_FALSE(op::is_binary_elementwise_comparison(&node));
@@ -758,7 +733,7 @@ namespace
 
     void op_is_RNNCell()
     {
-        op::RNNCell node;
+        op::v0::RNNCell node;
         EXPECT_FALSE(op::is_unary_elementwise_arithmetic(&node));
         EXPECT_FALSE(op::is_binary_elementwise_arithmetic(&node));
         EXPECT_FALSE(op::is_binary_elementwise_comparison(&node));
@@ -1002,7 +977,9 @@ namespace
 
 TEST(op_is, check)
 {
+    NGRAPH_SUPPRESS_DEPRECATED_START
 #define NGRAPH_OP(a, b) op_is_##a();
 #include "opset0_tbl.hpp"
 #undef NGRAPH_OP
+    NGRAPH_SUPPRESS_DEPRECATED_END
 }

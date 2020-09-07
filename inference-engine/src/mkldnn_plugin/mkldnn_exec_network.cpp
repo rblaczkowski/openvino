@@ -4,16 +4,17 @@
 
 #include <ie_metric_helpers.hpp>
 #include <precision_utils.h>
-#include <net_pass.h>
+#include <legacy/net_pass.h>
 #include "mkldnn_exec_network.h"
 
 #include "mkldnn_async_infer_request.h"
 #include "mkldnn_infer_request.h"
 #include "mkldnn_memory_state.h"
 #include "mkldnn_itt.h"
+#include "nodes/mkldnn_memory_node.hpp"
 #include "bf16transformer.h"
-#include <ie_util_internal.hpp>
-#include <graph_tools.hpp>
+#include <legacy/ie_util_internal.hpp>
+#include <legacy/graph_tools.hpp>
 #include <threading/ie_executor_manager.hpp>
 #include "low_precision_transformations/convolution.hpp"
 #include "low_precision_transformations/eltwise.hpp"
@@ -107,18 +108,9 @@ MKLDNNExecNetwork::MKLDNNExecNetwork(const InferenceEngine::ICNNNetwork &network
         // special case when all InferRequests are muxed into a single queue
         _taskExecutor = ExecutorManager::getInstance()->getExecutor("CPU");
     } else {
-        const int env_threads = parallel_get_env_threads();
-        const auto& numa_nodes = getAvailableNUMANodes();
-        const auto numa_nodes_num = numa_nodes.size();
-        auto streamExecutorConfig = cfg.streamExecutorConfig;
-        // use logical cores only for single-socket targets in throughput mode
-        const int hw_cores = streamExecutorConfig._streams > 1 && numa_nodes_num == 1 ? parallel_get_max_threads() : getNumberOfCPUCores();
-        const int threads = streamExecutorConfig._threads ? streamExecutorConfig._threads : (env_threads ? env_threads : hw_cores);
-        streamExecutorConfig._threadsPerStream = streamExecutorConfig._streams
-                                                ? std::max(1, threads/streamExecutorConfig._streams)
-                                                : threads;
-        streamExecutorConfig._name = "CPUStreamsExecutor";
-        _taskExecutor = ExecutorManager::getInstance()->getIdleCPUStreamsExecutor(streamExecutorConfig);
+        auto streamsExecutorConfig = InferenceEngine::IStreamsExecutor::Config::MakeDefaultMultiThreaded(_cfg.streamExecutorConfig);
+        streamsExecutorConfig._name = "CPUStreamsExecutor";
+        _taskExecutor = ExecutorManager::getInstance()->getIdleCPUStreamsExecutor(streamsExecutorConfig);
     }
     if (0 != cfg.streamExecutorConfig._streams) {
         _callbackExecutor = ExecutorManager::getInstance()->getIdleCPUStreamsExecutor(
@@ -153,7 +145,8 @@ MKLDNNExecNetwork::MKLDNNExecNetwork(const InferenceEngine::ICNNNetwork &network
     if (_graphs.size() == 1) {
         for (auto &node : _graphs.begin()->get()->GetNodes()) {
             if (node->getType() == MemoryInput) {
-                auto state_store = node->getChildEdgeAt(0)->getMemoryPtr();
+                auto memoryNode = dynamic_cast<MKLDNNMemoryInputNode*>(node.get());
+                auto state_store = memoryNode->getStore();
                 auto state_name = node->getName();
 
                 // Remove suffix with pair ID. Internal information.
