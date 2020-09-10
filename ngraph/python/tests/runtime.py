@@ -91,6 +91,9 @@ class Computation(object):
         input_values = [np.array(input_value) for input_value in input_values]
         input_shapes = [get_shape(input_value) for input_value in input_values]
 
+        # import pudb
+        # pudb.set_trace()
+
         if self.network_cache.get(str(input_shapes)) is None:
             capsule = Function.to_capsule(self.function)
             cnn_network = IENetwork(capsule)

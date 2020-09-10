@@ -116,6 +116,8 @@ class ModelImportRunner(onnx.backend.test.BackendTest):
                 with open(output_file, "rb") as f:
                     tensor.ParseFromString(f.read())
                 ref_outputs.append(numpy_helper.to_array(tensor))
+            if(len(inputs) == 0):
+                continue
             outputs = list(prepared_model.run(inputs))
             cls.assert_similar_outputs(ref_outputs, outputs, result_rtol, result_atol)
             executed_tests = executed_tests + 1
