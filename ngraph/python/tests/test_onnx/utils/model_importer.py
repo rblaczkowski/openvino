@@ -36,6 +36,7 @@ class ModelImportRunner(onnx.backend.test.BackendTest):
         backend: Type[Backend],
         models: List[Dict[str, str]],
         parent_module: Optional[str] = None,
+        data_root: Optional[str] = '',
     ) -> None:
         self.backend = backend
         self._parent_module = parent_module
@@ -44,7 +45,7 @@ class ModelImportRunner(onnx.backend.test.BackendTest):
         self._test_items = defaultdict(dict)  # type: Dict[Text, Dict[Text, TestItem]]
 
         for model in models:
-            test_name = "test_{}".format(model["model_name"])
+            test_name = "test_{}".format(model["model_name"])[:-5].replace(data_root, '').replace('/', '_')
 
             test_case = OnnxTestCase(
                 name=test_name,
@@ -154,5 +155,5 @@ class ModelImportRunner(onnx.backend.test.BackendTest):
                 model_test.model_dir, prepared_model, model_test.rtol, model_test.atol
             )
 
-            assert executed_tests > 0
+            assert executed_tests > 0, "This model have no test data"
         self._add_test(kind + "ModelExecution", model_test.name, run_execution, model_marker)
