@@ -138,19 +138,6 @@ class ModelImportRunner(onnx.backend.test.BackendTest):
             model_marker[0] = model
             prepared_model = self.backend.prepare(model, device)
             assert prepared_model is not None
-            import hashlib
-
-            def md5(fname):
-                hash_md5 = hashlib.md5()
-                with open(fname, "rb") as f:
-                    for chunk in iter(lambda: f.read(4096), b""):
-                        hash_md5.update(chunk)
-                return hash_md5.hexdigest()
-            base, _ = os.path.splitext(model_test.model_name)
-            # print(base)
-            # print(base + ".tar.gz")
-            # print(md5(base + ".tar.gz"))
-            # print(model_test.model_name)
             executed_tests = ModelImportRunner._execute_npz_data(
                 model_test.model_dir, prepared_model, model_test.rtol, model_test.atol
             )
