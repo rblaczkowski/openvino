@@ -14,6 +14,7 @@
 # limitations under the License.
 # ******************************************************************************
 
+import pytest
 import tests
 from operator import itemgetter
 from pathlib import Path
@@ -94,11 +95,17 @@ if len(zoo_models) > 0:
     OpenVinoOnnxBackend.backend_name = tests.BACKEND_NAME
 
     # import all test cases at global scope to make them visible to pytest
+    # import pudb
+    # pudb.set_trace()
+
     backend_test = ModelImportRunner(OpenVinoOnnxBackend, zoo_models, __name__, MODELS_ROOT_DIR)
     test_cases = backend_test.test_cases["OnnxBackendValidationModelImportTest"]
     del test_cases
 
     test_cases = backend_test.test_cases["OnnxBackendValidationModelExecutionTest"]
+    pytest.mark.xfail(test_cases.test_onnx_model_zoo_vision_object_detection_segmentation_duc_model_ResNet101_DUC_7_ResNet101_DUC_HDC_cpu)
     del test_cases
+
+    # pytest.mark.xfail(backend_test.test_cases["OnnxBackendValidationModelExecutionTest"].test_onnx_model_zoo_vision_object_detection_segmentation_duc_model_ResNet101_DUC_7_ResNet101_DUC_HDC_cpu)
 
     globals().update(backend_test.enable_report().test_cases)

@@ -45,7 +45,7 @@ class ModelImportRunner(onnx.backend.test.BackendTest):
         self._test_items = defaultdict(dict)  # type: Dict[Text, Dict[Text, TestItem]]
 
         for model in models:
-            test_name = "test_{}".format(model["model_name"])[:-5].replace(data_root, '').replace('/', '_')
+            test_name = "test_{}".format(model["model_name"])[:-5].replace(data_root, '').replace('/', '_').replace('-', '_')
 
             test_case = OnnxTestCase(
                 name=test_name,
