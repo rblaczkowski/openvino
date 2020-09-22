@@ -50,10 +50,12 @@ tolerance_map = {
     "rain_princess": {"atol": 0.001, "rtol": 0.001},
     "udnie": {"atol": 0.001, "rtol": 0.001},
     "candy": {"atol": 0.003, "rtol": 0.003},
+    "densenet-3": {"atol": 1e-7, "rtol": 0.0011},
     "arcfaceresnet100-8": {"atol": 0.001, "rtol": 0.001},
     "mobilenetv2-7": {"atol": 0.001, "rtol": 0.001},
     "resnet101-v1-7": {"atol": 0.001, "rtol": 0.001},
     "resnet101-v2-7": {"atol": 0.001, "rtol": 0.001},
+    "resnet152-v1-7": {"atol": 1e-7, "rtol": 0.003},
     "resnet152-v2-7": {"atol": 0.001, "rtol": 0.001},
     "resnet18-v1-7": {"atol": 0.001, "rtol": 0.001},
     "resnet18-v2-7": {"atol": 0.001, "rtol": 0.001},
@@ -110,6 +112,7 @@ if len(zoo_models) > 0:
         for test_case in import_xfail_list:
             xfail, test_name = test_case
             xfail(getattr(test_cases, test_name))
+
     del test_cases
 
     test_cases = backend_test.test_cases["OnnxBackendModelExecutionTest"]
@@ -130,6 +133,7 @@ if len(zoo_models) > 0:
         for test_case in import_xfail_list + execution_xfail_list:
             xfail, test_name = test_case
             xfail(getattr(test_cases, test_name))
+
     del test_cases
 
     globals().update(backend_test.enable_report().test_cases)
