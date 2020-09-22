@@ -23,6 +23,15 @@ import os
 from tests.test_onnx.utils import OpenVinoOnnxBackend
 from tests.test_onnx.utils.model_importer import ModelImportRunner
 
+from tests import (xfail_issue_38701,
+                   xfail_issue_1,
+                   xfail_issue_2,
+                   xfail_issue_3,
+                   xfail_issue_36533,
+                   xfail_issue_4,
+                   xfail_issue_35926,
+                   xfail_issue_5,
+                   xfail_issue_6)
 
 MODELS_ROOT_DIR = tests.MODEL_ZOO_DIR
 
@@ -91,33 +100,36 @@ if len(zoo_models) > 0:
     # flake8: noqa: E501
     if tests.MODEL_ZOO_XFAIL:
         import_xfail_list = [
-            "test_onnx_model_zoo_vision_classification_mnist_model_mnist_1_model_cpu",
-            "test_onnx_model_zoo_vision_object_detection_segmentation_tiny_yolov2_model_tinyyolov2_1_model_cpu",
-            "test_onnx_model_zoo_vision_object_detection_segmentation_yolov3_model_yolov3_10_yolov3_cpu",
-            "test_onnx_model_zoo_vision_object_detection_segmentation_ssd_mobilenetv1_model_ssd_mobilenet_v1_10_ssd_mobilenet_v1_cpu",
-            "test_onnx_model_zoo_text_machine_comprehension_bidirectional_attention_flow_model_bidaf_9_bidaf_cpu",
+            (xfail_issue_38701, "test_onnx_model_zoo_text_machine_comprehension_bidirectional_attention_flow_model_bidaf_9_bidaf_cpu"),
+            (xfail_issue_1, "test_onnx_model_zoo_vision_classification_mnist_model_mnist_1_model_cpu"),
+            (xfail_issue_2, "test_onnx_model_zoo_vision_object_detection_segmentation_ssd_mobilenetv1_model_ssd_mobilenet_v1_10_ssd_mobilenet_v1_cpu"),
+            (xfail_issue_2, "test_onnx_model_zoo_vision_object_detection_segmentation_tiny_yolov2_model_tinyyolov2_1_model_cpu"),
+            (xfail_issue_2, "test_onnx_model_zoo_vision_object_detection_segmentation_yolov3_model_yolov3_10_yolov3_cpu"),
+            (xfail_issue_3, "test_onnx_model_zoo_vision_object_detection_segmentation_tiny_yolov2_model_tinyyolov2_1_model_cpu"),
         ]
         for test_case in import_xfail_list:
-            pytest.mark.xfail(getattr(test_cases, test_case))
+            xfail, test_name = test_case
+            xfail(getattr(test_cases, test_name))
     del test_cases
 
     test_cases = backend_test.test_cases["OnnxBackendModelExecutionTest"]
     if tests.MODEL_ZOO_XFAIL:
         execution_xfail_list = [
-            "test_onnx_model_zoo_text_machine_comprehension_gpt_2_model_gpt2_10_GPT2_model_cpu",
-            "test_onnx_model_zoo_text_machine_comprehension_bert_squad_model_bertsquad_10_bertsquad10_cpu",
-            "test_onnx_model_zoo_text_machine_comprehension_roberta_model_roberta_sequence_classification_9_roberta_sequence_classification_9_cpu",
-            "test_onnx_model_zoo_text_machine_comprehension_gpt_2_model_gpt2_lm_head_10_model_cpu",
-            "test_onnx_model_zoo_vision_classification_efficientnet_lite4_model_efficientnet_lite4_11_efficientnet_lite4_cpu",
-            "test_onnx_model_zoo_text_machine_comprehension_bert_squad_model_bertsquad_8_bertsquad8_cpu",
-            "test_onnx_model_zoo_vision_object_detection_segmentation_duc_model_ResNet101_DUC_7_ResNet101_DUC_HDC_cpu",
-            "test_onnx_model_zoo_vision_object_detection_segmentation_retinanet_model_retinanet_9_retinanet_9_cpu",
-            "test_onnx_model_zoo_vision_classification_shufflenet_model_shufflenet_v2_10_test_shufflenetv2_model_cpu",
-            "test_onnx_model_zoo_vision_object_detection_segmentation_yolov4_model_yolov4_yolov4_yolov4_cpu",
-            "test_onnx_model_zoo_text_machine_comprehension_roberta_model_roberta_base_11_roberta_base_11_cpu",
+            (xfail_issue_36533, "test_onnx_model_zoo_vision_object_detection_segmentation_duc_model_ResNet101_DUC_7_ResNet101_DUC_HDC_cpu"),
+            (xfail_issue_36533, "test_onnx_model_zoo_vision_object_detection_segmentation_retinanet_model_retinanet_9_retinanet_9_cpu"),
+            (xfail_issue_4, "test_onnx_model_zoo_vision_object_detection_segmentation_yolov4_model_yolov4_yolov4_yolov4_cpu"),
+            (xfail_issue_35926, "test_onnx_model_zoo_text_machine_comprehension_bert_squad_model_bertsquad_10_bertsquad10_cpu"),
+            (xfail_issue_35926, "test_onnx_model_zoo_text_machine_comprehension_gpt_2_model_gpt2_10_GPT2_model_cpu"),
+            (xfail_issue_35926, "test_onnx_model_zoo_text_machine_comprehension_roberta_model_roberta_base_11_roberta_base_11_cpu"),
+            (xfail_issue_35926, "test_onnx_model_zoo_text_machine_comprehension_bert_squad_model_bertsquad_8_bertsquad8_cpu"),
+            (xfail_issue_35926, "test_onnx_model_zoo_text_machine_comprehension_gpt_2_model_gpt2_lm_head_10_model_cpu"),
+            (xfail_issue_5, "test_onnx_model_zoo_vision_classification_shufflenet_model_shufflenet_v2_10_test_shufflenetv2_model_cpu"),
+            (xfail_issue_5, "test_onnx_model_zoo_vision_classification_efficientnet_lite4_model_efficientnet_lite4_11_efficientnet_lite4_cpu"),
+            (xfail_issue_6, "test_onnx_model_zoo_text_machine_comprehension_roberta_model_roberta_sequence_classification_9_roberta_sequence_classification_9_cpu")
         ]
         for test_case in import_xfail_list + execution_xfail_list:
-            pytest.mark.xfail(getattr(test_cases, test_case))
+            xfail, test_name = test_case
+            xfail(getattr(test_cases, test_name))
     del test_cases
 
     globals().update(backend_test.enable_report().test_cases)
