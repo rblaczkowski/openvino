@@ -3,7 +3,7 @@
 # Copyright (C) 2018-2020 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
-import logging
+.ci/openvino-onnx/watchdog/src/watchdog.pyimport logging
 import timeout_decorator
 from datetime import datetime
 from retrying import retry
