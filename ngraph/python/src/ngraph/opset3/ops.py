@@ -97,7 +97,7 @@ def broadcast(
     if broadcast_spec.upper() == "EXPLICIT":
         inputs.append(as_node(axes_mapping))
     return _get_node_factory_opset3().create(
-        "Broadcast", inputs, {"broadcast_spec": broadcast_spec.upper()}
+        "Broadcast", inputs, {"mode": broadcast_spec.upper()}
     )
 
 
@@ -402,22 +402,6 @@ def read_value(init_value: NodeInput, variable_id: str, name: Optional[str] = No
         "ReadValue",
         [as_node(init_value)],
         {"variable_id": variable_id}
-    )
-
-
-@nameable_op
-def reverse(data: NodeInput, axis: NodeInput, mode: str, name: Optional[str] = None) -> Node:
-    """Perform axis-reverse operation.
-
-    :param data: The input node on which operation will be carried out.
-    :param axis: The list of indices of axes to be reversed.
-    :param mode: The mode specifies how the second input tensor should be interpreted:
-                 as a set of indices or a mask. Range of values: index, mask.
-    :param name: The optional name of the output node.
-    :return: The new node with reversed axes.
-    """
-    return _get_node_factory_opset3("opset1").create(
-        "Reverse", as_nodes(data, axis), {"mode": mode.lower()}
     )
 
 

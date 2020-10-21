@@ -48,10 +48,10 @@ public:
         try {
             auto extension = InferenceEngine::make_so_pointer<InferenceEngine::IExtension>(
                 FileUtils::makeSharedLibraryName<char>({},
-                    std::string("extension_tests") + IE_BUILD_POSTFIX));
+                    std::string("template_extension") + IE_BUILD_POSTFIX));
             ie.AddExtension(extension);
         } catch (const InferenceEngine::details::InferenceEngineException & ex) {
-            ASSERT_STR_CONTAINS(ex.what(), "name: experimental. Opset");
+            ASSERT_STR_CONTAINS(ex.what(), "name: custom_opset. Opset");
         }
     }
 };
@@ -117,7 +117,7 @@ TEST_F(CoreThreadingTests, RegisterPlugins) {
 }
 
 // tested function: GetAvailableDevices, UnregisterPlugin
-// TODO: some plugins initialization (e.g. GNA) failed during such stress-test scenario
+// TODO: some initialization (e.g. thread/dlopen) sporadically fails during such stress-test scenario
 TEST_F(CoreThreadingTests, DISABLED_GetAvailableDevices) {
     InferenceEngine::Core ie;
     runParallel([&] () {

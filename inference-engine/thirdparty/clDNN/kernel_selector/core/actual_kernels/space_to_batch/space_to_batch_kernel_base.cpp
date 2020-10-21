@@ -26,27 +26,31 @@ bool SpaceToBatchKernelBase::Validate(const Params& p, const optional_params& o)
         return false;
     }
 
+    const space_to_batch_params& params = static_cast<const space_to_batch_params&>(p);
+    for (auto& fused_op : params.fused_ops) {
+        if (!IsFusedPrimitiveSupported(fused_op))
+            return false;
+    }
+
+    if (params.inputs[0].Dimentions() > 6)
+        return false;
+
     return true;
 }
 
 CommonDispatchData SpaceToBatchKernelBase::SetDefault(const space_to_batch_params& params, const optional_params&) const {
-    CommonDispatchData runInfo;
+    const auto& out = params.output;
 
-    std::vector<size_t> global = { params.output.Batch().v,
-                                   params.output.Feature().v,
-                                   params.output.W().v * params.output.Z().v * params.output.Y().v * params.output.X().v };
+    CommonDispatchData dispatchData;
+    if (out.GetLayout() == DataLayout::b_fs_yx_fsv16 && out.Feature().v % 16 == 0) {
+        dispatchData.gws = { out.Batch().v, out.Feature().v, out.Y().v * out.X().v };
+        dispatchData.lws = {1, 16, 1};
+    } else {
+        dispatchData.gws = { out.Batch().v, out.Feature().v, out.W().v * out.Z().v * out.Y().v * out.X().v };
+        dispatchData.lws = GetOptimalLocalWorkGroupSizes(dispatchData.gws, params.engineInfo);
+    }
 
-    auto local = GetOptimalLocalWorkGroupSizes(global, params.engineInfo);
-
-    runInfo.gws0 = global[0];
-    runInfo.gws1 = global[1];
-    runInfo.gws2 = global[2];
-
-    runInfo.lws0 = local[0];
-    runInfo.lws1 = local[1];
-    runInfo.lws2 = local[2];
-
-    return runInfo;
+    return dispatchData;
 }
 
 JitConstants SpaceToBatchKernelBase::GetJitConstants(const space_to_batch_params& params) const {
@@ -86,14 +90,15 @@ KernelsData SpaceToBatchKernelBase::GetCommonKernelsData(const Params& params, c
         return {};
     }
 
-    auto runInfo = SetDefault(newParams, options);
+    auto dispatchData = SetDefault(newParams, options);
     auto entry_point = GetEntryPoint(kernelName, newParams.layerID, options);
     auto cldnn_jit = GetJitConstants(newParams);
     std::string jit = CreateJit(kernelName, cldnn_jit, entry_point);
 
     auto& kernel = kd.kernels[0];
 
-    FillCLKernelData(kernel, runInfo, params.engineInfo, kernelName, jit, entry_point);
+    FillCLKernelData(kernel, dispatchData, params.engineInfo, kernelName, jit, entry_point,
+                     "", false, false, 1, GetFusedPrimitiveInputsCount(params));
 
     kd.estimatedTime = estimatedTime;
 

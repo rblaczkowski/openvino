@@ -18,10 +18,12 @@
 
 #include "ngraph/file_util.hpp"
 #include "ngraph/ngraph.hpp"
-#include "ngraph/serializer.hpp"
 #include "util/test_tools.hpp"
 
 #include <memory>
+
+NGRAPH_SUPPRESS_DEPRECATED_START
+
 using namespace std;
 using namespace ngraph;
 

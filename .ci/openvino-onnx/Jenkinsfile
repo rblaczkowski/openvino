@@ -1,6 +1,8 @@
-
 // Copyright (C) 2018-2020 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
+
+DOCKER_CONTAINER_NAME= "openvino-onnx-ci-container"
+DOCKER_IMAGE_TAG = "openvino-onnx-ci-image"
 
 def getGitPrInfo(String project) {
     def gitPrInfo = [
@@ -58,9 +60,18 @@ def gitSubmoduleUpdate(String repository_name) {
 
 def buildDockerImage() {
     sh """
-        docker build --tag=openvino-onnx-ci  --file=.ci/openvino-onnx/Dockerfile \
+        docker build --tag=${DOCKER_IMAGE_TAG}  --file=.ci/openvino-onnx/Dockerfile \
         --build-arg http_proxy=http://proxy-chain.intel.com:911/ \
         --build-arg https_proxy=http://proxy-chain.intel.com:912/ .
+    """
+}
+
+def runTests() {
+    sh """
+        docker run --name ${DOCKER_CONTAINER_NAME} \
+        --volume ${HOME}/ONNX_CI/onnx-models-15-Oct/.onnx/model_zoo:/root/.onnx/model_zoo \
+        --volume ${HOME}/ONNX_CI/onnx-models/.onnx/model_zoo/MSFT:/root/.onnx/model_zoo/MSFT \
+        ${DOCKER_IMAGE_TAG}
     """
 }
 
@@ -74,6 +85,7 @@ pipeline {
     }
     options {
         skipDefaultCheckout true
+        timeout(activity: true, time: 10, unit: 'MINUTES')
     }
     stages {
         stage("Clone repository") {
@@ -84,11 +96,19 @@ pipeline {
                 gitSubmoduleUpdate(PROJECT_NAME)
             }
         }
-        stage("Run tests") {
+        stage("Prepare Docker environment") {
             steps{
                 dir("${WORKDIR}") {
                     buildDockerImage()
                 }
+            }
+        }
+        stage("Run tests") {
+            options {
+                  timeout(time: 15, unit: 'MINUTES')
+              }
+            steps{
+                runTests()
             }
         }
     }
@@ -104,6 +124,7 @@ pipeline {
                 deleteDir()
                 sh """
                     docker image prune -f
+                    docker rm -f ${DOCKER_CONTAINER_NAME}
                 """
             }
         }

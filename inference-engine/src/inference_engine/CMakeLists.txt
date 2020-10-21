@@ -4,10 +4,6 @@
 
 set (TARGET_NAME "inference_engine")
 
-if(ENABLE_LTO)
-    ie_enable_lto()
-endif()
-
 file (GLOB LIBRARY_SRC
         ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/threading/*.cpp
@@ -18,6 +14,8 @@ list(REMOVE_ITEM LIBRARY_SRC ${IE_STATIC_DEPENDENT_FILES})
 
 set(IE_BASE_SOURCE_FILES
       ${CMAKE_CURRENT_SOURCE_DIR}/cnn_network_ngraph_impl.cpp
+      # will be merged with file_utils.cpp after IE dependency on legacy is removed
+      ${CMAKE_CURRENT_SOURCE_DIR}/ie_unicode.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/generic_ie.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/blob_factory.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/ie_blob_common.cpp
@@ -27,6 +25,7 @@ set(IE_BASE_SOURCE_FILES
       ${CMAKE_CURRENT_SOURCE_DIR}/ie_parameter.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/ie_rtti.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/precision_utils.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/shape_infer/ie_built_in_holder.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/network_serializer.cpp
       ${CMAKE_CURRENT_SOURCE_DIR}/network_serializer.hpp
       ${CMAKE_CURRENT_SOURCE_DIR}/system_allocator.cpp
@@ -74,6 +73,11 @@ if(ENABLE_SSE42)
     add_definitions(-DHAVE_SSE=1)
 endif()
 
+if(ENABLE_V7_SERIALIZE)
+    set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/cnn_network_ngraph_impl.cpp"
+        PROPERTIES COMPILE_DEFINITIONS ENABLE_V7_SERIALIZE)
+endif()
+
 addVersionDefines(ie_version.cpp CI_BUILD_NUMBER)
 
 set (PUBLIC_HEADERS_DIR "${IE_MAIN_SOURCE_DIR}/include")
@@ -113,8 +117,14 @@ add_cpplint_target(${TARGET_NAME}_plugin_api_cpplint FOR_SOURCES ${plugin_api_sr
 add_library(${TARGET_NAME}_common_obj OBJECT
             ${IE_BASE_SOURCE_FILES})
 
+ie_faster_build(${TARGET_NAME}_common_obj
+    UNITY
+    PCH PRIVATE "precomp.hpp"
+)
+
 target_compile_definitions(${TARGET_NAME}_common_obj PRIVATE IMPLEMENT_INFERENCE_ENGINE_API)
 target_include_directories(${TARGET_NAME}_common_obj PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}"
     $<TARGET_PROPERTY:${TARGET_NAME}_transformations,INTERFACE_INCLUDE_DIRECTORIES>
     $<TARGET_PROPERTY:${TARGET_NAME}_plugin_api,INTERFACE_INCLUDE_DIRECTORIES>)
 
@@ -128,6 +138,10 @@ add_library(${TARGET_NAME}_obj OBJECT
             ${LIBRARY_SRC}
             ${LIBRARY_HEADERS}
             ${PUBLIC_HEADERS})
+
+ie_faster_build(${TARGET_NAME}_obj
+    UNITY
+)
 
 target_compile_definitions(${TARGET_NAME}_obj PRIVATE IMPLEMENT_INFERENCE_ENGINE_API)
 
@@ -152,14 +166,14 @@ add_cpplint_target(${TARGET_NAME}_cpplint FOR_TARGETS ${TARGET_NAME}_obj)
 # Create shared library file from object library
 
 add_library(${TARGET_NAME} SHARED
-            $<TARGET_OBJECTS:${TARGET_NAME}_obj>
-            ${IE_STATIC_DEPENDENT_FILES})
+            ${IE_STATIC_DEPENDENT_FILES}
+            $<TARGET_OBJECTS:${TARGET_NAME}_obj>)
 
 set_ie_threading_interface_for(${TARGET_NAME})
 
-target_link_libraries(${TARGET_NAME} PRIVATE Threads::Threads pugixml openvino::itt
+target_link_libraries(${TARGET_NAME} PRIVATE ${CMAKE_DL_LIBS} Threads::Threads pugixml openvino::itt
                                              ${NGRAPH_LIBRARIES} inference_engine_transformations
-                                     PUBLIC ${CMAKE_DL_LIBS} ${TARGET_NAME}_legacy)
+                                     PUBLIC ${TARGET_NAME}_legacy)
 
 target_include_directories(${TARGET_NAME} INTERFACE ${PUBLIC_HEADERS_DIR} PRIVATE
                                                 $<TARGET_PROPERTY:${TARGET_NAME}_plugin_api,INTERFACE_INCLUDE_DIRECTORIES>)
@@ -172,6 +186,8 @@ target_compile_definitions(${TARGET_NAME} PRIVATE IMPLEMENT_INFERENCE_ENGINE_API
 
 ie_register_plugins(MAIN_TARGET ${TARGET_NAME}
                     POSSIBLE_PLUGINS MultiDevicePlugin HeteroPlugin clDNNPlugin GNAPlugin MKLDNNPlugin myriadPlugin)
+
+ie_add_api_validator_post_build_step(TARGET ${TARGET_NAME})
 
 # Static library used for unit tests which are always built
 
@@ -191,12 +207,16 @@ if(WIN32)
     set_target_properties(${TARGET_NAME}_s PROPERTIES COMPILE_PDB_NAME ${TARGET_NAME}_s)
 endif()
 
-target_link_libraries(${TARGET_NAME}_s PRIVATE ${NGRAPH_LIBRARIES} inference_engine_transformations openvino::itt
-# NOTE: public linkage with ITT is important here! without it binaries that use this library do not
-#       get proper compile flags to support ITT which causes hard-to-detect bugs.
-                                       PUBLIC pugixml ${CMAKE_DL_LIBS})
+target_link_libraries(${TARGET_NAME}_s PRIVATE ${CMAKE_DL_LIBS} ${NGRAPH_LIBRARIES}
+                                               inference_engine_transformations openvino::itt
+                                       PUBLIC pugixml)
 
 target_compile_definitions(${TARGET_NAME}_s PUBLIC USE_STATIC_IE)
+
+# LTO
+
+set_target_properties(${TARGET_NAME} ${TARGET_NAME}_obj ${TARGET_NAME}_s ${TARGET_NAME}_common_obj
+                      PROPERTIES INTERPROCEDURAL_OPTIMIZATION ${ENABLE_LTO})
 
 # export targets
 
@@ -223,7 +243,7 @@ ie_developer_export_targets(${TARGET_NAME} ${TARGET_NAME}_plugin_api xbyak)
 
 list(APPEND core_components ngraph)
 
-if(THREADING STREQUAL "TBB" OR THREADING STREQUAL "TBB_AUTO")
+if((THREADING STREQUAL "TBB" OR THREADING STREQUAL "TBB_AUTO") AND TBBROOT MATCHES ${TEMP})
     ie_cpack_add_component(tbb REQUIRED)
     list(APPEND core_components tbb)
 

@@ -24,22 +24,8 @@ ParamsKey PoolingKernelGPURef::GetSupportedKey() const {
     k.EnableOutputDataType(Datatype::F32);
     k.EnableOutputDataType(Datatype::UINT8);
     k.EnableOutputDataType(Datatype::INT8);
-    k.EnableInputLayout(DataLayout::bfyx);
-    k.EnableInputLayout(DataLayout::yxfb);
-    k.EnableInputLayout(DataLayout::byxf);
-    k.EnableInputLayout(DataLayout::bfzyx);
-    k.EnableInputLayout(DataLayout::b_fs_zyx_fsv16);
-    k.EnableInputLayout(DataLayout::bs_fs_zyx_bsv16_fsv16);
-    k.EnableInputLayout(DataLayout::b_fs_yx_fsv32);
-    k.EnableInputLayout(DataLayout::b_fs_zyx_fsv32);
-    k.EnableOutputLayout(DataLayout::bfyx);
-    k.EnableOutputLayout(DataLayout::yxfb);
-    k.EnableOutputLayout(DataLayout::byxf);
-    k.EnableOutputLayout(DataLayout::bfzyx);
-    k.EnableOutputLayout(DataLayout::b_fs_zyx_fsv16);
-    k.EnableOutputLayout(DataLayout::bs_fs_zyx_bsv16_fsv16);
-    k.EnableOutputLayout(DataLayout::b_fs_yx_fsv32);
-    k.EnableOutputLayout(DataLayout::b_fs_zyx_fsv32);
+    k.EnableAllInputLayout();
+    k.EnableAllOutputLayout();
     k.EnableTensorOffset();
     k.EnableTensorPitches();
     k.EnableBatching();
@@ -55,8 +41,8 @@ ParamsKey PoolingKernelGPURef::GetSupportedKey() const {
     return k;
 }
 
-JitConstants PoolingKernelGPURef::GetJitConstants(const pooling_params& params, DispatchData kd) const {
-    auto jit = PoolingKernelBase::GetJitConstants(params, kd);
+JitConstants PoolingKernelGPURef::GetJitConstants(const pooling_params& params, DispatchData dispatchData) const {
+    auto jit = PoolingKernelBase::GetJitConstants(params, dispatchData);
     jit.Merge(MakeTypeJitConstants(GetActivationType(params), "ACTIVATION"));
     jit.Merge(MakeTypeJitConstants(GetAccumulatorType(params), "ACCUMULATOR"));
 

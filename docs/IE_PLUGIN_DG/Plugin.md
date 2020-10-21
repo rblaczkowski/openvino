@@ -80,7 +80,7 @@ Actual graph compilation is done in the `ExecutableNetwork` constructor. Refer t
 The function accepts a const shared pointer to `ngraph::Function` object and performs the following steps:
 
 1. Deep copies a const object to a local object, which can later be modified.
-2. Applies common and plugin-specific transformations on a copied graph to make the graph more friendly to hardware operations. For details how to write custom plugin-specific transformation, please, refer to [Writing ngraph transformations](@ref new_ngraph_transformation) guide. See detailed topics about network representation:
+2. Applies common and plugin-specific transformations on a copied graph to make the graph more friendly to hardware operations. For details how to write custom plugin-specific transformation, please, refer to [Writing ngraph transformations](@ref ngraph_transformation) guide. See detailed topics about network representation:
     * [Intermediate Representation and Operation Sets](../_docs_MO_DG_IR_and_opsets.html)
     * [Quantized networks](@ref quantized_networks).
 
@@ -191,7 +191,7 @@ information must be stored and checked during the import.
 Create Instance of Plugin Class
 ------------------------
 
-Inference Engine plugin library must export only one function creating a plugin instance:
+Inference Engine plugin library must export only one function creating a plugin instance using IE_DEFINE_PLUGIN_CREATE_FUNCTION macro:
 
 @snippet src/template_plugin.cpp plugin:create_plugin_engine
 

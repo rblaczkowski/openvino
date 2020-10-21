@@ -6,11 +6,10 @@
 #include <ie_plugin_config.hpp>
 
 #include <hetero/hetero_plugin_config.hpp>
-#include <cpp_interfaces/base/ie_plugin_base.hpp>
 #include <threading/ie_executor_manager.hpp>
 
 #include <ngraph/op/util/op_types.hpp>
-#include <ngraph/specialize_function.hpp>
+#include <ngraph/graph_util.hpp>
 #include <ngraph/pass/manager.hpp>
 #include <ngraph/opsets/opset.hpp>
 #include <transformations/common_optimizations/common_optimizations.hpp>
@@ -52,7 +51,6 @@ Plugin::~Plugin() {
 
 std::shared_ptr<ngraph::Function> TransformNetwork(const std::shared_ptr<const ngraph::Function>& function) {
     // 1. Copy ngraph::Function first to apply some transformations which modify original ngraph::Function
-    const bool shareConsts = false, constFolding = false;
     std::vector<::ngraph::element::Type> new_types;
     std::vector<::ngraph::PartialShape> new_shapes;
 
@@ -61,11 +59,7 @@ std::shared_ptr<ngraph::Function> TransformNetwork(const std::shared_ptr<const n
         new_types.emplace_back(parameter->get_element_type());
     }
 
-    auto clonedNetwork = ngraph::specialize_function(std::const_pointer_cast<ngraph::Function>(function),
-        new_types, new_shapes, std::vector<void *>(new_types.size(), nullptr), constFolding, shareConsts);
-
-    auto transformedNetwork = clonedNetwork;
-    transformedNetwork->set_friendly_name(function->get_friendly_name());
+    auto transformedNetwork = ngraph::clone_function(*function);
 
     // 2. Perform common optimizations and device-specific transformations
     ngraph::pass::Manager passManager;
@@ -137,19 +131,17 @@ InferenceEngine::ExecutableNetwork Plugin::ImportNetworkImpl(std::istream& model
     // ..
 
     auto cfg = Configuration(config, exportedCfg);
-
-    IExecutableNetwork::Ptr executableNetwork;
     auto exec_network_impl = std::make_shared<ExecutableNetwork>(model, cfg, std::static_pointer_cast<Plugin>(shared_from_this()));
-    executableNetwork.reset(new ExecutableNetworkBase<ExecutableNetworkInternal>(exec_network_impl),
-                            [](InferenceEngine::details::IRelease *p) {p->Release(); });
 
-    return InferenceEngine::ExecutableNetwork{ executableNetwork };
+    return make_executable_network(exec_network_impl);
 }
 // ! [plugin:import_network_impl]
 
 // ! [plugin:query_network]
-void Plugin::QueryNetwork(const ICNNNetwork &network, const ConfigMap& config, QueryNetworkResult &res) const {
+QueryNetworkResult Plugin::QueryNetwork(const ICNNNetwork &network, const ConfigMap& config) const {
+    QueryNetworkResult res;
     Configuration cfg{config, _cfg, false};
+
     auto function = network.getFunction();
     if (function == nullptr) {
          THROW_IE_EXCEPTION << "Template Plugin supports only ngraph cnn network representation";
@@ -170,17 +162,15 @@ void Plugin::QueryNetwork(const ICNNNetwork &network, const ConfigMap& config, Q
     std::unordered_set<std::string> unsupported;
     auto opset = ngraph::get_opset4();
     for (auto&& node : transformedFunction->get_ops()) {
-        if (!ngraph::op::is_constant(node) && !ngraph::op::is_parameter(node) && !ngraph::op::is_output(node)) {
-            // Extract transformation history from transformed node as list of nodes
-            for (auto&& fusedLayerName : ngraph::getFusedNamesVector(node)) {
-                // Filter just nodes from original operation set
-                // TODO: fill with actual decision rules based on whether kernel is supported by backend
-                if (contains(originalOps, fusedLayerName)) {
-                    if (opset.contains_type_insensitive(fusedLayerName)) {
-                        supported.emplace(fusedLayerName);
-                    } else {
-                        unsupported.emplace(fusedLayerName);
-                    }
+        // Extract transformation history from transformed node as list of nodes
+        for (auto&& fusedLayerName : ngraph::getFusedNamesVector(node)) {
+            // Filter just nodes from original operation set
+            // TODO: fill with actual decision rules based on whether kernel is supported by backend
+            if (contains(originalOps, fusedLayerName)) {
+                if (opset.contains_type_insensitive(fusedLayerName)) {
+                    supported.emplace(fusedLayerName);
+                } else {
+                    unsupported.emplace(fusedLayerName);
                 }
             }
         }
@@ -192,6 +182,8 @@ void Plugin::QueryNetwork(const ICNNNetwork &network, const ConfigMap& config, Q
             res.supportedLayersMap.emplace(layerName, GetName());
         }
     }
+
+    return res;
 }
 // ! [plugin:query_network]
 
@@ -259,14 +251,6 @@ InferenceEngine::Parameter Plugin::GetMetric(const std::string& name, const std:
 // ! [plugin:get_metric]
 
 // ! [plugin:create_plugin_engine]
-INFERENCE_PLUGIN_API(StatusCode) CreatePluginEngine(IInferencePlugin *&plugin, ResponseDesc *resp) noexcept {
-    try {
-        plugin = make_ie_compatible_plugin({2, 1, CI_BUILD_NUMBER, "templatePlugin"},
-                                           std::make_shared<Plugin>());
-        return OK;
-    }
-    catch (std::exception &ex) {
-        return DescriptionBuffer(GENERAL_ERROR, resp) << ex.what();
-    }
-}
+static const Version version = {{2, 1}, CI_BUILD_NUMBER, "templatePlugin"};
+IE_DEFINE_PLUGIN_CREATE_FUNCTION(Plugin, version)
 // ! [plugin:create_plugin_engine]

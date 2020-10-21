@@ -6,7 +6,9 @@
 
 #ifdef IR_READER_V10
 # include <ngraph/node.hpp>
-# include <ie_ngraph_utils.hpp>
+# include <ngraph/op/util/sub_graph_base.hpp>
+# include <legacy/ie_ngraph_utils.hpp>
+# include <cpp/ie_cnn_network.h>
 #endif  // IR_READER_V10
 
 #include <ie_blob.h>
@@ -101,6 +103,10 @@ private:
         std::string type;
 
     protected:
+        static std::shared_ptr<ngraph::Node> fillSubGraphLayer(const ngraph::OutputVector& inputs, const pugi::xml_node& node,
+                                                        std::istream& binStream,
+                                                        const GenericLayerParams& layerParsePrms,
+                                                        std::shared_ptr<ngraph::op::util::SubGraphOp> sub_graph_node);
         explicit LayerBaseCreator(const std::string& type): type(type) {}
         std::string getType() {
             return type;
@@ -169,6 +175,7 @@ private:
                                              std::istream& binStream, const GenericLayerParams& params);
 
     GenericLayerParams parseGenericParams(const pugi::xml_node& node);
+    void parsePreProcess(CNNNetwork& network, const pugi::xml_node& root, std::istream& binStream);
 
     std::map<std::string, DataPtr> portsToData;
     std::map<std::string, GenericLayerParams> layersParseInfo;
@@ -215,6 +222,21 @@ private:
                 std::vector<size_t> shape;
                 if (!getParameters<size_t>(node.child("data"), name, shape)) return;
                 static_cast<ngraph::Strides&>(*a) = ngraph::Strides(shape);
+#ifdef __APPLE__
+            } else if (auto a = ngraph::as_type<ngraph::AttributeAdapter<std::vector<size_t>>>(&adapter)) {
+                std::vector<size_t> result;
+                if (!getParameters<size_t>(node.child("data"), name, result)) return;
+                static_cast<std::vector<size_t>&>(*a) = result;
+#else
+            } else if (auto a = ngraph::as_type<ngraph::AttributeAdapter<std::vector<size_t>>>(&adapter)) {
+                std::vector<size_t> result;
+                if (!getParameters<size_t>(node.child("data"), name, result)) return;
+                a->set(result);
+#endif
+            } else if (auto a = ngraph::as_type<ngraph::AttributeAdapter<ngraph::AxisSet>>(&adapter)) {
+                std::vector<size_t> axes;
+                if (!getParameters<size_t>(node.child("data"), name, axes)) return;
+                static_cast<ngraph::AxisSet&>(*a) = ngraph::AxisSet(axes);
             } else if (auto a = ngraph::as_type<ngraph::AttributeAdapter<ngraph::op::TopKSortType>>(&adapter)) {
                 if (!getStrAttribute(node.child("data"), name, val)) return;
                 static_cast<ngraph::op::TopKSortType&>(*a) = ngraph::as_enum<ngraph::op::TopKSortType>(val);

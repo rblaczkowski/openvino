@@ -73,6 +73,7 @@ ParamsKey ConvolutionKernel_imad::GetSupportedKey() const {
     k.EnableOutputDataType(Datatype::INT8);
     k.EnableOutputDataType(Datatype::UINT8);
     k.EnableOutputDataType(Datatype::F32);
+    k.EnableOutputDataType(Datatype::F16);
 
     k.EnableInputWeightsType(WeightsType::INT8);
     k.EnableInputWeightsType(WeightsType::UINT8);
@@ -81,7 +82,6 @@ ParamsKey ConvolutionKernel_imad::GetSupportedKey() const {
     k.EnableInputLayout(DataLayout::b_fs_yx_fsv4);
 
     k.EnableOutputLayout(DataLayout::b_fs_yx_fsv4);
-    k.EnableOutputLayout(DataLayout::byxf_af32);
     k.EnableOutputLayout(DataLayout::b_fs_yx_fsv16);
     k.EnableOutputLayout(DataLayout::bs_fs_yx_bsv16_fsv16);
 
@@ -103,8 +103,8 @@ KernelsData ConvolutionKernel_imad::GetKernelsData(const Params& params, const o
     return GetCommonKernelsData(params, options);
 }
 
-JitConstants ConvolutionKernel_imad::GetJitConstants(const convolution_params& params, const DispatchData& kd) const {
-    auto mem_consts = Parent::GetJitConstants(params, kd);
+JitConstants ConvolutionKernel_imad::GetJitConstants(const convolution_params& params, const DispatchData& dispatchData) const {
+    auto mem_consts = Parent::GetJitConstants(params, dispatchData);
 
     const auto& input = params.inputs[0];
     const auto& output = params.output;
@@ -115,8 +115,6 @@ JitConstants ConvolutionKernel_imad::GetJitConstants(const convolution_params& p
         in_fsv = 4;
     else if (params.inputs[0].GetLayout() == DataLayout::b_fs_yx_fsv16)
         in_fsv = 16;
-    else if (params.inputs[0].GetLayout() == DataLayout::byxf_af32)
-        in_fsv = 32;
 
     mem_consts.AddConstants({
         MakeJitConstant("_ID", RoundUp(input.Feature().v, in_fsv)),
@@ -126,6 +124,7 @@ JitConstants ConvolutionKernel_imad::GetJitConstants(const convolution_params& p
         MakeJitConstant("OWPAD", output.X().pad.Total()),
         MakeJitConstant("OHPAD", output.Y().pad.Total()),
         MakeJitConstant("SIMD_SIZE", SIMD_SIZE),
+        MakeJitConstant("FSV", in_fsv),
     });
 
     if (params.filterSize.x != 3 || params.filterSize.y != 3) {
@@ -151,7 +150,7 @@ JitConstants ConvolutionKernel_imad::GetJitConstants(const convolution_params& p
 
 ConvolutionKernelBase::DispatchData ConvolutionKernel_imad::SetDefault(const convolution_params& params,
                                                                        int) const {
-    DispatchData kd;
+    DispatchData dispatchData;
 
     const auto& output = params.output;
     const auto& weights = params.weights;
@@ -159,34 +158,26 @@ ConvolutionKernelBase::DispatchData ConvolutionKernel_imad::SetDefault(const con
     size_t otw, oth;
     getOutBlock_WH(output.X().v, params.stride.x, weights.X().v, params.dilation.x, otw, oth);
 
-    std::vector<size_t> global = {// number of tiles needed to cover output width
-                                  CeilDiv(output.X().v, otw),
+    dispatchData.gws = { // number of tiles needed to cover output width
+                         CeilDiv(output.X().v, otw),
 
-                                  // number of tiles needed to cover output height
-                                  CeilDiv(output.Y().v, oth),
+                         // number of tiles needed to cover output height
+                         CeilDiv(output.Y().v, oth),
 
-                                  // round depth range up
-                                  Align(weights.OFM().v, SIMD_SIZE) * params.groups * output.Batch().v};
+                         // round depth range up
+                         Align(weights.OFM().v, SIMD_SIZE) * params.groups * output.Batch().v };
 
-    std::vector<size_t> local = {1, 1, SIMD_SIZE};
+    dispatchData.lws = {1, 1, SIMD_SIZE};
 
-    kd.gws0 = global[0];
-    kd.gws1 = global[1];
-    kd.gws2 = global[2];
-
-    kd.lws0 = local[0];
-    kd.lws1 = local[1];
-    kd.lws2 = local[2];
-
-    kd.cldnnStyle = {0, 0, 0, 0, 0};
-    kd.gemmStyle = {0, 0, 0, 0, 0, 0};
+    dispatchData.cldnnStyle = {0, 0, 0, 0, 0};
+    dispatchData.gemmStyle = {0, 0, 0, 0, 0, 0};
 
     // This kernel is quite slow for 1x1 and KHx1 kernels
     // TODO: check if we need any optimized kernels in this layout
     // If yes, we need to implement some customization for these cases.
-    kd.efficiency = FORCE_PRIORITY_3;
+    dispatchData.efficiency = FORCE_PRIORITY_3;
 
-    return kd;
+    return dispatchData;
 }  // SetDefault
 
 bool ConvolutionKernel_imad::Validate(const Params& params, const optional_params& options) const {
@@ -195,7 +186,8 @@ bool ConvolutionKernel_imad::Validate(const Params& params, const optional_param
     }
 
     auto& newParams = static_cast<const convolution_params&>(params);
-    if (newParams.groups > 1 && newParams.weights.IFM().v % 4 != 0)
+    if (newParams.groups > 1 && newParams.weights.IFM().v % 4 != 0 &&
+        newParams.inputs[0].GetLayout() != DataLayout::b_fs_yx_fsv16)
         return false;
 
     size_t min_block_size_x = (newParams.weights.X().v - 1) * newParams.dilation.x + 1;

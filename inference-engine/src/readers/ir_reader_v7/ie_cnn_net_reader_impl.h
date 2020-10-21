@@ -10,10 +10,10 @@
 #include <string>
 #include <vector>
 
-#include "cnn_network_impl.hpp"
+#include <legacy/cnn_network_impl.hpp>
 #include "ie_memcpy.h"
 #include "parsers.h"
-#include "ie_util_internal.hpp"
+#include <legacy/ie_util_internal.hpp>
 
 namespace pugi {
 class xml_node;
@@ -30,11 +30,11 @@ struct FormatParserCreator {
     virtual ~FormatParserCreator() = default;
 };
 
-struct INFERENCE_ENGINE_API_CLASS(V2FormatParserCreator) : public FormatParserCreator {
+struct V2FormatParserCreator : public FormatParserCreator {
     std::shared_ptr<IFormatParser> create(size_t version) override;
 };
 
-class INFERENCE_ENGINE_API_CLASS(CNNNetReaderImpl) {
+class CNNNetReaderImpl {
 public:
     explicit CNNNetReaderImpl(const FormatParserCreator::Ptr& _creator);
 

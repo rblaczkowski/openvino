@@ -18,6 +18,10 @@ typedef std::tuple<
         float,                          // stop
         float,                          // step
         InferenceEngine::Precision,     // Net precision
+        InferenceEngine::Precision,     // Input precision
+        InferenceEngine::Precision,     // Output precision
+        InferenceEngine::Layout,        // Input layout
+        InferenceEngine::Layout,        // Output layout
         std::string                     // Target device name
 > RangeParams;
 
@@ -26,7 +30,7 @@ class RangeLayerTest : public testing::WithParamInterface<RangeParams>,
     float start, stop, step;
 public:
     static std::string getTestCaseName(testing::TestParamInfo<RangeParams> obj);
-    void Infer();
+    void Infer() override;
 
 protected:
     void SetUp() override;

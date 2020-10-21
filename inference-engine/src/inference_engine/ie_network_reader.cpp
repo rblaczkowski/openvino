@@ -162,12 +162,16 @@ CNNNetwork details::ReadNetwork(const std::string& modelPath, const std::string&
 
     // Fix unicode name
 #if defined(ENABLE_UNICODE_PATH_SUPPORT) && defined(_WIN32)
-    std::wstring model_path = InferenceEngine::details::multiByteCharToWString(modelPath.c_str());
+    std::wstring model_path = FileUtils::multiByteCharToWString(modelPath.c_str());
 #else
     std::string model_path = modelPath;
 #endif
     // Try to open model file
     std::ifstream modelStream(model_path, std::ios::binary);
+    // save path in extensible array of stream
+    // notice: lifetime of path pointed by pword(0) is limited by current scope
+    const std::string path_to_save_in_stream = modelPath;
+    modelStream.pword(0) = const_cast<char*>(path_to_save_in_stream.c_str());
     if (!modelStream.is_open())
         THROW_IE_EXCEPTION << "Model file " << modelPath << " cannot be opened!";
 
@@ -197,7 +201,7 @@ CNNNetwork details::ReadNetwork(const std::string& modelPath, const std::string&
             if (!bPath.empty()) {
                 // Open weights file
 #if defined(ENABLE_UNICODE_PATH_SUPPORT) && defined(_WIN32)
-                std::wstring weights_path = InferenceEngine::details::multiByteCharToWString(bPath.c_str());
+                std::wstring weights_path = FileUtils::multiByteCharToWString(bPath.c_str());
 #else
                 std::string weights_path = bPath;
 #endif
